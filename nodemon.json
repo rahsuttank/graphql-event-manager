@@ -1,0 +1,7 @@
+{
+  "env": {
+    "MONGO_USER": "tushartank24",
+    "MONGO_PASSWORD": "d6HVRaiBsjPpLDkE",
+    "MONGO_DB": "events-dev"
+  }
+}
