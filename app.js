@@ -3,9 +3,11 @@ const bodyParser = require("body-parser");
 const { graphqlHTTP } = require("express-graphql");
 const { buildSchema } = require("graphql");
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 // mongoose.Promise = require('b')
 
 const Event = require("./models/event");
+const User = require("./models/user");
 
 const app = express();
 
@@ -25,12 +27,23 @@ app.use(
             price: Float!
             date: String!
         }
+
+        type User {
+            _id: ID!
+            email: String!
+            password: String
+        }
         
         input EventInput {
             title: String!
             description: String!
             price: Float!
             date: String!
+        }
+        
+        input UserInput {
+            email: String!
+            password: String!
         }
 
         type RootQuery {
@@ -39,6 +52,7 @@ app.use(
 
         type RootMutation { 
             createEvent(eventInput: EventInput): Event
+            createUser(userInput: UserInput): User
         }
 
         schema {
@@ -56,24 +70,47 @@ app.use(
             console.log(err);
           });
       },
-      createEvent: (args) => {
+      createEvent: async (args) => {
+        const { title, description, price, date } = args.eventInput;
         const event = new Event({
-          title: args.eventInput.title,
-          description: args.eventInput.description,
-          price: +args.eventInput.price,
-          date: new Date(args.eventInput.date),
+          title: title,
+          description: description,
+          price: +price,
+          date: new Date(date),
+          creator: "67ac08d541265d2c4717e472",
         });
-        return event
-          .save()
-          .then((res) => {
-            console.log(res);
-            return res;
-          })
-          .catch((err) => {
-            console.log(err);
-            throw err;
+        try {
+          const res = await event.save();
+          const user = await User.findById('67ac08d541265d2c4717e472')
+          if(!user){
+            throw new Error("No user by that ID")
+          }
+          user.createdEvents.push(event)
+          await user.save();
+          return res;
+        } catch (err) {
+          console.log(err);
+          throw new Error(`Error: ${err}`);
+        }
+      },
+      createUser: async (args) => {
+        const { email, password } = args.userInput;
+        try {
+          const emailTaken = await User.findOne({ email: email });
+          if (emailTaken) {
+            throw new Error("Email already taken");
+          }
+          const hashedPassword = await bcrypt.hash(password, 12);
+          const user = new User({
+            email: email,
+            password: hashedPassword,
           });
-        return event;
+          const result = await user.save();
+          console.log(result);
+          return result;
+        } catch (err) {
+          throw err;
+        }
       },
     },
     graphiql: true,
