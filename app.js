@@ -4,7 +4,6 @@ const { graphqlHTTP } = require("express-graphql");
 const { buildSchema } = require("graphql");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-// mongoose.Promise = require('b')
 
 const Event = require("./models/event");
 const User = require("./models/user");
@@ -14,6 +13,16 @@ const app = express();
 const events = [];
 
 app.use(bodyParser.json());
+
+const user = async (userID) => {
+  try {
+    const creatorUser = await User.findById(userID);
+    return creatorUser;
+  } catch (err) {
+    throw err;
+  }
+};
+// user("67ac08d541265d2c4717e472").then(res => console.log("sss",res));
 
 app.use(
   "/graphqlApi",
@@ -26,12 +35,14 @@ app.use(
             description: String!
             price: Float!
             date: String!
+            creator: User!
         }
 
         type User {
             _id: ID!
             email: String!
             password: String
+            createdEvents: [Event!]
         }
         
         input EventInput {
@@ -61,14 +72,19 @@ app.use(
         }
         `),
     rootValue: {
-      events: () => {
-        return Event.find()
-          .then((events) => {
-            return events;
-          })
-          .catch((err) => {
-            console.log(err);
+      events: async () => {
+        try {
+          const eventsQuery = await Event.find();
+          const events = eventsQuery.map(async (event) => {
+            return {
+              ...event._doc,
+              creator: user.bind(this, event._doc.creator),
+            };
           });
+          return events;
+        } catch (err) {
+          console.log(err);
+        }
       },
       createEvent: async (args) => {
         const { title, description, price, date } = args.eventInput;
@@ -81,11 +97,11 @@ app.use(
         });
         try {
           const res = await event.save();
-          const user = await User.findById('67ac08d541265d2c4717e472')
-          if(!user){
-            throw new Error("No user by that ID")
+          const user = await User.findById("67ac08d541265d2c4717e472");
+          if (!user) {
+            throw new Error("No user by that ID");
           }
-          user.createdEvents.push(event)
+          user.createdEvents.push(event);
           await user.save();
           return res;
         } catch (err) {
