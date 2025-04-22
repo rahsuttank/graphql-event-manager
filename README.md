@@ -31,7 +31,7 @@ A simple Node.js + Express + GraphQL backend for managing events, users, and aut
 ### 1. Clone the Repo
 
 ```bash
-git clone https://github.com/your-username/graphql-event-manager.git
+git clone https://github.com/rahsuttank/graphql-event-manager.git
 cd graphql-event-manager
 ```
 
